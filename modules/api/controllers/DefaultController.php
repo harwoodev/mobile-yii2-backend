@@ -7,7 +7,7 @@ use Yii;
 use sizeg\jwt\Jwt;
 use sizeg\jwt\JwtHttpBearerAuth;
 
-use yii\web\Controller;
+use yii\rest\Controller;
 
 /**
  * Default controller for the `api` module
@@ -31,24 +31,28 @@ class DefaultController extends Controller
      * @return string
      */
     public function actionLogin()
-    {        // here you can put some credentials validation logic
-        // so if it success we return token
-        $signer = new \Lcobucci\JWT\Signer\Hmac\Sha256();
-        /** @var Jwt $jwt */
-        $jwt = Yii::$app->jwt;
-        $token = $jwt->getBuilder()
-            ->setIssuer('http://example.com')// Configures the issuer (iss claim)
-            ->setAudience('http://example.org')// Configures the audience (aud claim)
-            ->setId('4f1g23a12aa', true)// Configures the id (jti claim), replicating as a header item
-            ->setIssuedAt(time())// Configures the time that the token was issue (iat claim)
-            ->setExpiration(time() + 3600)// Configures the expiration time of the token (exp claim)
-            ->set('uid', 100)// Configures a new claim, called "uid"
-            ->sign($signer, $jwt->key)// creates a signature using [[Jwt::$key]]
-            ->getToken(); // Retrieves the generated token
+    {
+        $request = Yii::$app->request;
 
-        return $this->asJson([
-            'token' => (string)$token,
-        ]);
+        if ($request->isPost) {
+            $signer = new \Lcobucci\JWT\Signer\Hmac\Sha256();
+            $jwt = Yii::$app->jwt;
+            $token = $jwt->getBuilder()
+                ->setIssuer('http://apps.harwood.com')// Configures the issuer (iss claim)
+                ->setAudience('harwood.mobile.com')// Configures the audience (aud claim)
+                ->setId('4f1g23a12aa', true) // change to emp_id later
+                ->setIssuedAt(time())
+                ->setExpiration(time() + 3600)
+                ->set('uid', 100) // not sure what this does
+                ->sign($signer, $jwt->key)
+                ->getToken();
+    
+            return $this->asJson([
+                'token' => (string)$token,
+            ]);
+        }
+
+        throw new \yii\base\ViewNotFoundException;
     }
 
     public function actionData() {
