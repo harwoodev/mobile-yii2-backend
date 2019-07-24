@@ -20,7 +20,7 @@ $config = [
     'components' => [
         'jwt' => [
             'class' => 'sizeg\jwt\Jwt',
-            'key'   => 'test123',
+            'key'   => 'harwoodkey',
         ],
         'request' => [
             // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation

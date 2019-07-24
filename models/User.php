@@ -1,32 +1,63 @@
 <?php
-
 namespace app\models;
 
-class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
+use Yii;
+use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
+
+class User extends ActiveRecord implements IdentityInterface
 {
-    public $id;
-    public $username;
-    public $password;
-    public $authKey;
-    public $accessToken;
+    const STATUS_DELETED = 0;
+    const STATUS_ACTIVE = 10;
 
-    private static $users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            'password' => 'admin',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            'password' => 'demo',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
+    public $jwtToken = '';
 
+    public static function tableName()
+    {
+        return 'hs_user';
+    }
+
+    public static function login($username, $password) {
+        $user = self::findByUsername($username);
+
+        if (!empty($user)) {
+            if ($user->validatePassword($password)) {
+                $user->generateJwtToken();
+                return $user;
+            }
+        }
+        
+        throw new \yii\base\UserException("Wrong username/password");
+    }
+
+    public function generateJwtToken() {
+        $signer = new \Lcobucci\JWT\Signer\Hmac\Sha256();
+        $jwt = Yii::$app->jwt;
+
+        /**
+         * by Muhd Danish Ezwan bin Mohd Nordin, to future programmer. Best regards!
+         * 
+         * guide to jwt: (more info at https://auth0.com/docs/tokens/jwt-claims#reserved-claims)
+         * iss - issuer claim; who issued the JWT token, usually used sites as the value
+         * aud - audience claim; who the jwt token is generated for, better use id of the person/organization (if you generate this for API usage)
+         * 
+         */
+        
+        $signer = new \Lcobucci\JWT\Signer\Hmac\Sha256();
+        $jwt = Yii::$app->jwt;
+        $this->jwtToken = (string)$jwt->getBuilder()
+            ->setIssuer('http://apps.harwood.my') // Configures the issuer (iss claim)
+            ->setAudience($this->id) // Configures the audience (aud claim)
+            ->set('uid', $this->id)
+            ->setIssuedAt(time())
+            // ->setExpiration(time() + 3600)
+            ->sign($signer, $jwt->key)
+            ->getToken();
+    }
+
+    public function getEmp() {
+        return $this->hasOne(HsHrEmployee::className(), ['emp_id' => 'emp_id']);
+    }
 
     /**
      * {@inheritdoc}
@@ -37,20 +68,6 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public static function findIdentityByAccessToken($token, $type = null)
-    {
-        foreach (self::$users as $user) {
-            if ($user['id'] === (string) $token->getClaim('uid')) {
-                return new static($user);
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Finds user by username
      *
      * @param string $username
@@ -58,13 +75,7 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public static function findByUsername($username)
     {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        return static::findOne(['username' => $username, 'status' => self::STATUS_ACTIVE]);
     }
 
     /**
@@ -72,7 +83,7 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public function getId()
     {
-        return $this->id;
+        return $this->emp_id;
     }
 
     /**
@@ -99,6 +110,15 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public function validatePassword($password)
     {
-        return $this->password === $password;
+        return Yii::$app->security->validatePassword($password, $this->password_hash);
+    }
+
+    /**
+     * {@inheritdoc}
+     * @param \Lcobucci\JWT\Token $token
+     */
+    public static function findIdentityByAccessToken($token, $type = null)
+    {
+        return self::findOne(['emp_id' => $token->getClaim('uid')]);
     }
 }

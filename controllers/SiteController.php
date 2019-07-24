@@ -4,11 +4,14 @@ namespace app\controllers;
 
 use Yii;
 use yii\filters\AccessControl;
-use yii\web\Controller;
+use yii\rest\Controller;
 use yii\web\Response;
 use yii\filters\VerbFilter;
-use app\models\LoginForm;
-use app\models\ContactForm;
+
+use sizeg\jwt\Jwt;
+use sizeg\jwt\JwtHttpBearerAuth;
+
+use app\models\User;
 
 class SiteController extends Controller
 {
@@ -18,111 +21,54 @@ class SiteController extends Controller
     public function behaviors()
     {
         return [
-            'access' => [
-                'class' => AccessControl::className(),
-                'only' => ['logout'],
-                'rules' => [
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
+            'authenticator' => [
+                'class' => JwtHttpBearerAuth::class,
+                'optional' => [
+                    'login',
                 ],
             ],
-            'verbs' => [
-                'class' => VerbFilter::className(),
-                'actions' => [
-                    'logout' => ['post'],
-                ],
-            ],
+            // 'access' => [
+            //     'class' => AccessControl::className(),
+            //     'rules' => [
+            //         [
+            //             'actions' => ['login', 'error'],
+            //             'allow' => true,
+            //         ],
+            //     ]
+            // ]
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function actions()
-    {
-        return [
-            'error' => [
-                'class' => 'yii\web\ErrorAction',
-            ],
-            'captcha' => [
-                'class' => 'yii\captcha\CaptchaAction',
-                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
-            ],
-        ];
-    }
-
-    /**
-     * Displays homepage.
-     *
-     * @return string
-     */
-    public function actionIndex()
-    {
-        return $this->render('index');
-    }
-
-    /**
-     * Login action.
-     *
-     * @return Response|string
-     */
     public function actionLogin()
     {
-        if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
-        }
+        \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
 
-        $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
-        }
+        $req = Yii::$app->request;
+        if ($req->isPost) {
+            // sanitize input -- not implemented
+            $username = $req->post('username');
+            $password = $req->post('password');
 
-        $model->password = '';
-        return $this->render('login', [
-            'model' => $model,
-        ]);
+            if (empty($username) || empty($password)) {
+                throw new \yii\base\UserException("Invalid data submitted");
+            }
+
+            $user = User::login($username, $password);
+    
+            return [
+                'username' => $user->username,
+                'token' => $user->jwtToken,
+                'fullname' => $user->emp->fullname
+            ];
+        }
+        throw new \yii\web\NotFoundHttpException();
     }
 
-    /**
-     * Logout action.
-     *
-     * @return Response
-     */
-    public function actionLogout()
+    public function actionSuccess()
     {
-        Yii::$app->user->logout();
-
-        return $this->goHome();
-    }
-
-    /**
-     * Displays contact page.
-     *
-     * @return Response|string
-     */
-    public function actionContact()
-    {
-        $model = new ContactForm();
-        if ($model->load(Yii::$app->request->post()) && $model->contact(Yii::$app->params['adminEmail'])) {
-            Yii::$app->session->setFlash('contactFormSubmitted');
-
-            return $this->refresh();
-        }
-        return $this->render('contact', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Displays about page.
-     *
-     * @return string
-     */
-    public function actionAbout()
-    {
-        return $this->render('about');
+        \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        return [
+            'success' => true
+        ];
     }
 }
