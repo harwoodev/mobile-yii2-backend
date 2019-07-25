@@ -124,7 +124,7 @@ class HsHrEmployee extends \yii\db\ActiveRecord
     }
 
     public function getImage() {
-        $default = 'noimage2.jpg';
+        $default = '/uploads/noimage2.jpg';
 
         $att_img = (new \yii\db\Query())
             ->select(["eattach_attachment AS img"])
@@ -136,7 +136,7 @@ class HsHrEmployee extends \yii\db\ActiveRecord
             ])
             ->one();
         
-        $img = (empty($att_img) ? $default : ("{$this->emp_id}/" . $att_img['img']));
-        return "http://apps.harwood.my/harwood/hris/uploads/{$img}";
+        $img = (empty($att_img) ? $default : $att_img['img']);
+        return "http://apps.harwood.my/harwood/hris{$img}";
     }
 }
