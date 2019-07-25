@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use yii\db\Query;
 
 /**
  * This is the model class for table "hs_hr_employee".
@@ -120,5 +121,22 @@ class HsHrEmployee extends \yii\db\ActiveRecord
     
     public function getFullname() {
         return trim(trim($this->emp_firstname) . ' ' . trim($this->emp_lastname));
+    }
+
+    public function getImage() {
+        $default = 'noimage2.jpg';
+
+        $att_img = (new \yii\db\Query())
+            ->select(["eattach_attachment AS img"])
+            ->from(['hs_hr_emp_attachment'])
+            ->andWhere([
+                'and',
+                ['eattach_selected' => 'Y'],
+                ['emp_id' => $this->emp_id]
+            ])
+            ->one();
+        
+        $img = (empty($att_img) ? $default : ("{$this->emp_id}/" . $att_img['img']));
+        return "http://apps.harwood.my/harwood/hris/uploads/{$img}";
     }
 }
