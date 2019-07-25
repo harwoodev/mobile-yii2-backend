@@ -27,15 +27,6 @@ class SiteController extends Controller
                     'login',
                 ],
             ],
-            // 'access' => [
-            //     'class' => AccessControl::className(),
-            //     'rules' => [
-            //         [
-            //             'actions' => ['login', 'error'],
-            //             'allow' => true,
-            //         ],
-            //     ]
-            // ]
         ];
     }
 
@@ -54,11 +45,14 @@ class SiteController extends Controller
             }
 
             $user = User::login($username, $password);
+            $emp = $user->emp;
     
             return [
                 'username' => $user->username,
                 'token' => $user->jwtToken,
-                'fullname' => $user->emp->fullname
+                'fullname' => $emp->fullname,
+                'firstname' => trim($emp->emp_firstname),
+                'lastname' => trim($emp->emp_lastname),
             ];
         }
         throw new \yii\web\NotFoundHttpException();
