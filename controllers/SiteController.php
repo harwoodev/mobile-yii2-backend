@@ -6,6 +6,7 @@ use Yii;
 use yii\filters\AccessControl;
 use yii\rest\Controller;
 use yii\web\Response;
+use yii\helpers\Json;
 use yii\filters\VerbFilter;
 
 use sizeg\jwt\Jwt;
@@ -24,8 +25,22 @@ class SiteController extends Controller
             'authenticator' => [
                 'class' => JwtHttpBearerAuth::class,
                 'optional' => [
-                    'login',
+                    'login', 'error'
                 ],
+            ],
+            'verbs' => [
+                'class' => VerbFilter::className(),
+                'actions' => [
+                    'login' => ['POST'],
+                ],
+            ]
+        ];
+    }
+
+    public function actions(){
+        return [
+            'error' => [
+                'class' => 'yii\web\ErrorAction',
             ],
         ];
     }
@@ -33,29 +48,27 @@ class SiteController extends Controller
     public function actionLogin()
     {
         \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-
         $req = Yii::$app->request;
-        if ($req->isPost) {
-            // sanitize input -- not implemented
-            $username = $req->post('username');
-            $password = $req->post('password');
+        $data = Json::decode($req->getRawBody());
 
-            if (empty($username) || empty($password)) {
-                throw new \yii\base\UserException("Invalid data submitted");
-            }
+        $username = $data['username'];
+        $password = $data['password'];
 
-            $user = User::login($username, $password);
-            $emp = $user->emp;
-    
-            return [
-                'username' => $user->username,
-                'token' => $user->jwtToken,
-                'fullname' => $emp->fullname,
-                'firstname' => trim($emp->emp_firstname),
-                'lastname' => trim($emp->emp_lastname),
-            ];
+        if (empty($username) || empty($password)) {
+            throw new \yii\base\UserException("Invalid data submitted");
         }
-        throw new \yii\web\NotFoundHttpException();
+
+        $user = User::login($username, $password);
+        $emp = $user->emp;
+
+        return [
+            'username' => $user->username,
+            'token' => $user->jwtToken,
+            'fullname' => $emp->fullname,
+            'firstname' => trim($emp->emp_firstname),
+            'lastname' => trim($emp->emp_lastname),
+            'imgUrl' => $emp->image
+        ];
     }
 
     public function actionSuccess()
