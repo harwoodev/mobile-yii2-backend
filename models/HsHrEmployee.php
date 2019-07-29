@@ -123,7 +123,9 @@ class HsHrEmployee extends \yii\db\ActiveRecord
         return trim(trim($this->emp_firstname) . ' ' . trim($this->emp_lastname));
     }
 
-    public function getImage() {
+    public static function getImage($emp_id=null) {
+        // I changed "Yii::$app->user->id" to get the emp_id instead of id in hs_user (mobile-yii2-backend project)
+        if (empty($emp_id)) $emp_id = Yii::$app->user->id; 
         $default = '/uploads/noimage2.jpg';
 
         $att_img = (new \yii\db\Query())
@@ -132,7 +134,10 @@ class HsHrEmployee extends \yii\db\ActiveRecord
             ->andWhere([
                 'and',
                 ['eattach_selected' => 'Y'],
-                ['emp_id' => $this->emp_id]
+                ['emp_id' => $emp_id]
+            ])
+            ->orderBy([
+                'eattach_id' => SORT_DESC
             ])
             ->one();
         
